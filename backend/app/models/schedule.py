@@ -2,7 +2,6 @@
 
 import uuid
 from datetime import datetime, time
-from typing import Optional
 
 from sqlalchemy import Boolean, ForeignKey, Integer, String, Time, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -35,8 +34,8 @@ class Schedule(Base):
     CheckNeedOutAfter: Mapped[time] = mapped_column(Time, nullable=False)
     DayCutoff: Mapped[time] = mapped_column(Time, nullable=False)
     IsDeleted: Mapped[bool] = mapped_column(Boolean, default=False)
-    DeletedTime: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    DeletedBy: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    DeletedTime: Mapped[datetime | None] = mapped_column(nullable=True)
+    DeletedBy: Mapped[str | None] = mapped_column(String, nullable=True)
     CreateTime: Mapped[datetime] = mapped_column(default=datetime.utcnow)
     UpdateTime: Mapped[datetime] = mapped_column(
         default=datetime.utcnow, onupdate=datetime.utcnow

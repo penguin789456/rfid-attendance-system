@@ -2,7 +2,6 @@
 
 import uuid
 from datetime import date, datetime, time
-from typing import Optional
 
 from sqlalchemy import Date, ForeignKey, Integer, String, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -33,7 +32,7 @@ class RequiredConfig(Base):
     FlexMinutes: Mapped[int] = mapped_column(Integer, nullable=False)
     DayCutoff: Mapped[time] = mapped_column(Time, nullable=False)
     EffectiveFrom: Mapped[date] = mapped_column(Date, nullable=False)
-    EffectiveTo: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    EffectiveTo: Mapped[date | None] = mapped_column(Date, nullable=True)
     CreateTime: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
     # Relationships

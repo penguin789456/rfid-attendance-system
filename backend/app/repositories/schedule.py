@@ -14,9 +14,7 @@ class ScheduleRepository(BaseRepository[Schedule]):
         """初始化 Repository。"""
         super().__init__(Schedule, db)
 
-    async def get_all_active(
-        self, skip: int = 0, limit: int = 100
-    ) -> list[Schedule]:
+    async def get_all_active(self, skip: int = 0, limit: int = 100) -> list[Schedule]:
         """取得所有未刪除的班表。"""
         result = await self.db.execute(
             select(Schedule)

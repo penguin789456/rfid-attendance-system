@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.department import Department
 from app.repositories.department import DepartmentRepository
-from app.schemas.department import DepartmentCreate, DepartmentResponse, DepartmentUpdate
+from app.schemas.department import (
+    DepartmentCreate,
+    DepartmentResponse,
+    DepartmentUpdate,
+)
 
 router = APIRouter(prefix="/api/departments", tags=["departments"])
 

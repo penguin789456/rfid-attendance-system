@@ -75,8 +75,10 @@ class ScanService:
 
         if attendance is None:
             # 第一次打卡 - 鎖定規則
-            required_config = await self.required_config_repo.get_current_config_for_department(
-                employee.Dept_GUID, weekday, work_date
+            required_config = (
+                await self.required_config_repo.get_current_config_for_department(
+                    employee.Dept_GUID, weekday, work_date
+                )
             )
 
             attendance = AttendanceDaily(
@@ -138,9 +140,7 @@ class ScanService:
         else:
             return 2  # LATE
 
-    def _calculate_check_out_status(
-        self, scan_time: time, required_out: time
-    ) -> int:
+    def _calculate_check_out_status(self, scan_time: time, required_out: time) -> int:
         """計算下班打卡狀態。"""
         if scan_time >= required_out:
             return 0  # NORMAL

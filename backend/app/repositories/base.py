@@ -18,16 +18,14 @@ class BaseRepository(Generic[ModelType]):
         self.model = model
         self.db = db
 
-    async def get_all(
-        self, skip: int = 0, limit: int = 100
-    ) -> list[ModelType]:
+    async def get_all(self, skip: int = 0, limit: int = 100) -> list[ModelType]:
         """取得所有記錄。"""
-        result = await self.db.execute(
-            select(self.model).offset(skip).limit(limit)
-        )
+        result = await self.db.execute(select(self.model).offset(skip).limit(limit))
         return list(result.scalars().all())
 
-    async def get_by_id(self, id_value: str, id_field: str = "GUID") -> ModelType | None:
+    async def get_by_id(
+        self, id_value: str, id_field: str = "GUID"
+    ) -> ModelType | None:
         """根據 ID 取得單一記錄。"""
         result = await self.db.execute(
             select(self.model).where(getattr(self.model, id_field) == id_value)
@@ -56,7 +54,5 @@ class BaseRepository(Generic[ModelType]):
         """取得總記錄數。"""
         from sqlalchemy import func
 
-        result = await self.db.execute(
-            select(func.count()).select_from(self.model)
-        )
+        result = await self.db.execute(select(func.count()).select_from(self.model))
         return result.scalar_one()

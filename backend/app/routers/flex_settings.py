@@ -45,7 +45,9 @@ async def get_flex_setting(
     return flex_setting
 
 
-@router.post("", response_model=FlexSettingResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=FlexSettingResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_flex_setting(
     data: FlexSettingCreate,
     db: AsyncSession = Depends(get_db),

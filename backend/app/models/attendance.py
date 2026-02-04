@@ -2,7 +2,6 @@
 
 import uuid
 from datetime import date, datetime
-from typing import Optional
 
 from sqlalchemy import Date, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -22,18 +21,18 @@ class AttendanceDaily(Base):
         String, ForeignKey("Employees.RFID_ID"), nullable=False
     )
     WorkDate: Mapped[date] = mapped_column(Date, nullable=False)
-    RequiredConfigGUID: Mapped[Optional[str]] = mapped_column(
+    RequiredConfigGUID: Mapped[str | None] = mapped_column(
         String, ForeignKey("RequiredConfigs.GUID"), nullable=True
     )
-    FirstInTime: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    LastOutTime: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    FirstInTime: Mapped[datetime | None] = mapped_column(nullable=True)
+    LastOutTime: Mapped[datetime | None] = mapped_column(nullable=True)
     CheckInStatus: Mapped[int] = mapped_column(
         Integer, default=0
     )  # 0=NORMAL, 1=FLEX, 2=LATE
     CheckOutStatus: Mapped[int] = mapped_column(
         Integer, default=2
     )  # 0=NORMAL, 1=EARLY, 2=MISSING
-    ExceptionFlags: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    ExceptionFlags: Mapped[str | None] = mapped_column(String, nullable=True)
     CreateTime: Mapped[datetime] = mapped_column(default=datetime.utcnow)
     UpdateTime: Mapped[datetime] = mapped_column(
         default=datetime.utcnow, onupdate=datetime.utcnow
