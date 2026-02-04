@@ -110,3 +110,8 @@ attendance.db
 # Logs
 logs/
 *.log
+
+
+#claude save histtory
+claude_compact_0204.txt
+DEVELOPMENT_LOG.md
