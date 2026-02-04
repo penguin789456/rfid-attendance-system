@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, time
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Time, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Time, Index, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -14,11 +14,12 @@ class Schedule(Base):
 
     __tablename__ = "Schedules"
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "UQ_Schedules_Dept_ActiveDay",
             "Dept_GUID",
             "ActiveDay",
-            name="UQ_Schedules_Dept_ActiveDay",
-            sqlite_where="IsDeleted = 0",
+            unique=True,
+            sqlite_where=text("IsDeleted = 0")
         ),
     )
 

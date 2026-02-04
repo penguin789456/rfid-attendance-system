@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Index, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -14,10 +14,11 @@ class FlexSetting(Base):
 
     __tablename__ = "FlexSettings"
     __table_args__ = (
-        UniqueConstraint(
-            "Dept_GUID",
-            name="UQ_FlexSettings_Dept",
-            sqlite_where="IsDeleted = 0",
+        Index(
+            "uix_dept_active",          # 索引名稱
+            "Dept_GUID",                # 欄位 (對應你 Schema 中的命名)
+            unique=True,                # 強制唯一限制
+            sqlite_where=text("IsDeleted = 0") # 關鍵：排除已軟刪除的資料
         ),
     )
 
