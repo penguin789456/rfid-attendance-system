@@ -1,0 +1,15 @@
+[project]
+name = "rfid-attendance-backend"
+version = "0.1.0"
+description = "Enterprise RFID Attendance System Backend API"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
