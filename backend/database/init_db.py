@@ -12,19 +12,6 @@ def get_sql_path(filename: str) -> Path:
     return Path(__file__).parent / filename
 
 
-def init_database(db_path: str = "attendance.db") -> None:
-    """初始化資料庫，建立所有資料表"""
-    schema_path = get_sql_path("schema.sql")
-
-    with open(schema_path, encoding="utf-8") as f:
-        schema_sql = f.read()
-
-    conn = sqlite3.connect(db_path)
-    conn.executescript(schema_sql)
-    conn.close()
-
-    print(f"資料庫初始化完成：{db_path}")
-
 
 def insert_sample_data(db_path: str = "attendance.db") -> None:
     """插入範例資料（測試用）"""
@@ -51,19 +38,19 @@ def reset_database(db_path: str = "attendance.db") -> None:
         db_file.unlink()
         print(f"已刪除舊資料庫：{db_path}")
 
-    init_database(db_path)
-
 
 if __name__ == "__main__":
     import sys
 
-    db_file = sys.argv[1] if len(sys.argv) > 1 else "attendance.db"
+    db_file = (
+        sys.argv[1]
+        if (len(sys.argv) > 1 and not sys.argv[1].startswith("--"))
+        else "attendance.db"
+    )
 
     # 檢查是否要重置
     if "--reset" in sys.argv:
         reset_database(db_file)
-    else:
-        init_database(db_file)
 
     # 詢問是否插入範例資料
     if "--sample" in sys.argv:
