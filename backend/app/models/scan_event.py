@@ -18,7 +18,7 @@ class ScanEvent(Base):
         String, primary_key=True, default=lambda: str(uuid.uuid4())
     )
     RFID_ID: Mapped[str] = mapped_column(
-        String, ForeignKey("Employees.RFID_ID"), nullable=False
+        String, ForeignKey("Employees.RFID_ID"), nullable=False, index=True
     )
     Device_ID: Mapped[str] = mapped_column(String, nullable=False)
     EventTime: Mapped[datetime] = mapped_column(nullable=False)

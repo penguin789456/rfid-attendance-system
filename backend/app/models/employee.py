@@ -1,5 +1,6 @@
 """員工資料模型。"""
 
+import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, ForeignKey, String
@@ -13,8 +14,11 @@ class Employee(Base):
 
     __tablename__ = "Employees"
 
-    RFID_ID: Mapped[str] = mapped_column(String, primary_key=True)
-    EmpCode: Mapped[str] = mapped_column(String, nullable=False)
+    GUID: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    RFID_ID: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    EmpCode: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     Name: Mapped[str] = mapped_column(String, nullable=False)
     Dept_GUID: Mapped[str] = mapped_column(
         String, ForeignKey("Departments.GUID"), nullable=False

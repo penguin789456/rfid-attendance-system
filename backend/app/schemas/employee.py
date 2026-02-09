@@ -8,7 +8,6 @@ from pydantic import BaseModel, ConfigDict
 class EmployeeBase(BaseModel):
     """員工基礎 schema。"""
 
-    RFID_ID: str
     EmpCode: str
     Name: str
     Dept_GUID: str
@@ -18,12 +17,13 @@ class EmployeeBase(BaseModel):
 class EmployeeCreate(EmployeeBase):
     """建立員工 schema。"""
 
-    pass
+    RFID_ID: str | None = None
 
 
 class EmployeeUpdate(BaseModel):
     """更新員工 schema。"""
 
+    RFID_ID: str | None = None
     EmpCode: str | None = None
     Name: str | None = None
     Dept_GUID: str | None = None
@@ -35,5 +35,7 @@ class EmployeeResponse(EmployeeBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+    GUID: str
+    RFID_ID: str | None = None
     CreateTime: datetime
     UpdateTime: datetime

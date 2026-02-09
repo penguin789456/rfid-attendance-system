@@ -267,8 +267,9 @@ export const useEmployeeStore = create<EmployeeState>((set) => ({
 #### Employees（員工）
 | 欄位 | 型別 | 說明 |
 |------|------|------|
-| RFID_ID | TEXT (PK) | RFID 卡 GUID |
-| EmpCode | TEXT | 員工編號 |
+| GUID | TEXT (PK) | 員工唯一識別 |
+| RFID_ID | TEXT (UNIQUE, NULL) | RFID 卡號（可後設定） |
+| EmpCode | TEXT (UNIQUE) | 員工編號 |
 | Name | TEXT | 員工姓名 |
 | Dept_GUID | TEXT (FK) | 所屬部門 |
 | Active | BOOLEAN | 是否在職 |
@@ -366,9 +367,10 @@ export const useEmployeeStore = create<EmployeeState>((set) => ({
 | 方法 | 路徑 | 說明 |
 |------|------|------|
 | GET | /api/employees | 取得員工列表 |
-| GET | /api/employees/{rfid_id} | 取得單一員工 |
-| PUT | /api/employees/{rfid_id} | 更新員工資料 |
-| DELETE | /api/employees/{rfid_id} | 刪除員工 |
+| GET | /api/employees/{guid} | 取得單一員工 |
+| POST | /api/employees | 新增員工 |
+| PUT | /api/employees/{guid} | 更新員工資料 |
+| DELETE | /api/employees/{guid} | 刪除員工 |
 
 #### Schedules（班表）
 | 方法 | 路徑 | 說明 |

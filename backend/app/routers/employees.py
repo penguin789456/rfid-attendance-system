@@ -28,14 +28,14 @@ async def get_employees(
     return employees
 
 
-@router.get("/{rfid_id}", response_model=EmployeeResponse)
+@router.get("/{guid}", response_model=EmployeeResponse)
 async def get_employee(
-    rfid_id: str,
+    guid: str,
     db: AsyncSession = Depends(get_db),
 ) -> Employee:
     """取得單一員工。"""
     repo = EmployeeRepository(db)
-    employee = await repo.get_by_rfid(rfid_id)
+    employee = await repo.get_by_id(guid)
     if not employee:
         raise HTTPException(status_code=404, detail="員工不存在")
     return employee
@@ -50,10 +50,11 @@ async def create_employee(
     emp_repo = EmployeeRepository(db)
     dept_repo = DepartmentRepository(db)
 
-    # 檢查 RFID ID 是否重複
-    existing = await emp_repo.get_by_rfid(data.RFID_ID)
-    if existing:
-        raise HTTPException(status_code=409, detail="RFID ID 已存在")
+    # 檢查 RFID ID 是否重複（僅當有提供時）
+    if data.RFID_ID:
+        existing = await emp_repo.get_by_rfid(data.RFID_ID)
+        if existing:
+            raise HTTPException(status_code=409, detail="RFID ID 已存在")
 
     # 檢查部門是否存在
     department = await dept_repo.get_by_id(data.Dept_GUID)
@@ -64,9 +65,9 @@ async def create_employee(
     return await emp_repo.create(employee)
 
 
-@router.put("/{rfid_id}", response_model=EmployeeResponse)
+@router.put("/{guid}", response_model=EmployeeResponse)
 async def update_employee(
-    rfid_id: str,
+    guid: str,
     data: EmployeeUpdate,
     db: AsyncSession = Depends(get_db),
 ) -> Employee:
@@ -74,11 +75,17 @@ async def update_employee(
     emp_repo = EmployeeRepository(db)
     dept_repo = DepartmentRepository(db)
 
-    employee = await emp_repo.get_by_rfid(rfid_id)
+    employee = await emp_repo.get_by_id(guid)
     if not employee:
         raise HTTPException(status_code=404, detail="員工不存在")
 
     update_data = data.model_dump(exclude_unset=True)
+
+    # 如果要更新 RFID_ID，檢查是否重複
+    if "RFID_ID" in update_data and update_data["RFID_ID"]:
+        existing = await emp_repo.get_by_rfid(update_data["RFID_ID"])
+        if existing and existing.GUID != guid:
+            raise HTTPException(status_code=409, detail="RFID ID 已存在")
 
     # 如果要更新部門，檢查部門是否存在
     if "Dept_GUID" in update_data:
@@ -92,14 +99,14 @@ async def update_employee(
     return await emp_repo.update(employee)
 
 
-@router.delete("/{rfid_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{guid}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_employee(
-    rfid_id: str,
+    guid: str,
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """刪除員工。"""
     repo = EmployeeRepository(db)
-    employee = await repo.get_by_rfid(rfid_id)
+    employee = await repo.get_by_id(guid)
     if not employee:
         raise HTTPException(status_code=404, detail="員工不存在")
 

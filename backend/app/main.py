@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.database import init_db
@@ -50,6 +51,9 @@ app.include_router(flex_settings_router)
 app.include_router(attendance_router)
 app.include_router(scan_router)
 
+@app.get('/favicon.ico', include_in_schema=False)
+async def favicon():
+    return FileResponse(r"D:\AIstudy-Arduino\FINAL\backend\app\favicon.ico")
 
 @app.get("/")
 async def root():
