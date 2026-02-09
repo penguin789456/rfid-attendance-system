@@ -12,7 +12,6 @@ def get_sql_path(filename: str) -> Path:
     return Path(__file__).parent / filename
 
 
-
 def insert_sample_data(db_path: str = "attendance.db") -> None:
     """插入範例資料（測試用）"""
     sample_data_path = get_sql_path("sample_data.sql")

@@ -51,9 +51,11 @@ app.include_router(flex_settings_router)
 app.include_router(attendance_router)
 app.include_router(scan_router)
 
-@app.get('/favicon.ico', include_in_schema=False)
+
+@app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return FileResponse(r"D:\AIstudy-Arduino\FINAL\backend\app\favicon.ico")
+
 
 @app.get("/")
 async def root():

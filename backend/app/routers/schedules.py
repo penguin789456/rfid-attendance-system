@@ -65,6 +65,26 @@ async def create_schedule(
             detail="該部門在此日期已有班表設定",
         )
 
+    # 檢查 ActiveDay=8 與 1-7 的衝突
+    if data.ActiveDay == 8:
+        # 若要設定全年班表，檢查是否已有特定日期班表
+        dept_schedules = await schedule_repo.get_by_department(data.Dept_GUID)
+        if any(s.ActiveDay != 8 for s in dept_schedules):
+            raise HTTPException(
+                status_code=409,
+                detail="該部門已有特定日期班表設定，無法新增全年班表",
+            )
+    else:
+        # 若要設定特定日期班表，檢查是否已有全年班表
+        all_day_schedule = await schedule_repo.get_by_department_and_day(
+            data.Dept_GUID, 8
+        )
+        if all_day_schedule:
+            raise HTTPException(
+                status_code=409,
+                detail="該部門已有全年班表設定，無法新增特定日期班表",
+            )
+
     schedule = Schedule(**data.model_dump())
     return await schedule_repo.create(schedule)
 
@@ -88,14 +108,35 @@ async def update_schedule(
 
     # 如果更新 ActiveDay，檢查是否衝突
     if "ActiveDay" in update_data:
+        new_active_day = update_data["ActiveDay"]
         existing = await repo.get_by_department_and_day(
-            schedule.Dept_GUID, update_data["ActiveDay"]
+            schedule.Dept_GUID, new_active_day
         )
         if existing and existing.GUID != guid:
             raise HTTPException(
                 status_code=409,
                 detail="該部門在此日期已有班表設定",
             )
+
+        # 檢查 ActiveDay=8 與 1-7 的衝突
+        if new_active_day == 8:
+            # 若要更新為全年班表，檢查是否已有其他特定日期班表
+            dept_schedules = await repo.get_by_department(schedule.Dept_GUID)
+            if any(s.ActiveDay != 8 and s.GUID != guid for s in dept_schedules):
+                raise HTTPException(
+                    status_code=409,
+                    detail="該部門已有特定日期班表設定，無法更新為全年班表",
+                )
+        else:
+            # 若要更新為特定日期班表，檢查是否已有全年班表
+            all_day_schedule = await repo.get_by_department_and_day(
+                schedule.Dept_GUID, 8
+            )
+            if all_day_schedule and all_day_schedule.GUID != guid:
+                raise HTTPException(
+                    status_code=409,
+                    detail="該部門已有全年班表設定，無法更新為特定日期班表",
+                )
 
     for key, value in update_data.items():
         setattr(schedule, key, value)
