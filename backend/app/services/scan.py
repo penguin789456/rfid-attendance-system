@@ -1,6 +1,6 @@
 """刷卡業務邏輯服務。"""
 
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -117,7 +117,9 @@ class ScanService:
 
     def _calculate_work_date(self, event_time: datetime, day_cutoff: time) -> date:
         """根據 DayCutoff 計算工作日期。"""
-        cutoff_datetime = datetime.combine(event_time.date(), day_cutoff)
+        cutoff_datetime = datetime.combine(event_time.date(), day_cutoff).replace(
+            tzinfo=UTC
+        )
 
         if event_time < cutoff_datetime:
             # 刷卡時間在日切點之前，屬於前一天
