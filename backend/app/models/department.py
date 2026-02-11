@@ -27,5 +27,4 @@ class Department(Base):
     # Relationships
     employees = relationship("Employee", back_populates="department")
     schedules = relationship("Schedule", back_populates="department")
-    flex_settings = relationship("FlexSetting", back_populates="department")
     required_configs = relationship("RequiredConfig", back_populates="department")

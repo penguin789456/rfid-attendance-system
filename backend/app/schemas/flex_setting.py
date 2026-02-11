@@ -8,7 +8,6 @@ from pydantic import BaseModel, ConfigDict, field_validator
 class FlexSettingBase(BaseModel):
     """彈性設定基礎 schema。"""
 
-    Dept_GUID: str
     FlexMinutes: int
 
     @field_validator("FlexMinutes")

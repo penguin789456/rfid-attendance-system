@@ -34,6 +34,9 @@ class Schedule(Base):
     CheckInNeedBefore: Mapped[time] = mapped_column(Time, nullable=False)
     CheckNeedOutAfter: Mapped[time] = mapped_column(Time, nullable=False)
     DayCutoff: Mapped[time] = mapped_column(Time, nullable=False)
+    FlexSetting_GUID: Mapped[str | None] = mapped_column(
+        String, ForeignKey("FlexSettings.GUID"), nullable=True
+    )
     IsDeleted: Mapped[bool] = mapped_column(Boolean, default=False)
     DeletedTime: Mapped[datetime | None] = mapped_column(nullable=True)
     DeletedBy: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -44,4 +47,5 @@ class Schedule(Base):
 
     # Relationships
     department = relationship("Department", back_populates="schedules")
+    flex_setting = relationship("FlexSetting", back_populates="schedules")
     required_configs = relationship("RequiredConfig", back_populates="schedule")

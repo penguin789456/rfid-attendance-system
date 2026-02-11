@@ -40,7 +40,7 @@ class ScanService:
         if not employee.Active:
             return ScanResponse(success=False, message="員工已離職")
 
-        # 2. 取得班表和彈性設定
+        # 2. 取得班表
         weekday = event_time.weekday() + 1  # Python 是 0-6，我們要 1-7
         schedule = await self.schedule_repo.get_schedule_for_date(
             employee.Dept_GUID, weekday
@@ -52,15 +52,19 @@ class ScanService:
                 employee_name=employee.Name,
             )
 
-        flex_setting = await self.flex_setting_repo.get_by_department(
-            employee.Dept_GUID
-        )
-        flex_minutes = flex_setting.FlexMinutes if flex_setting else 0
+        # 3. 從班表取得彈性設定
+        flex_minutes = 0
+        if schedule.FlexSetting_GUID:
+            flex_setting = await self.flex_setting_repo.get_by_id_active(
+                schedule.FlexSetting_GUID
+            )
+            if flex_setting:
+                flex_minutes = flex_setting.FlexMinutes
 
-        # 3. 使用 DayCutoff 決定 WorkDate
+        # 4. 使用 DayCutoff 決定 WorkDate
         work_date = self._calculate_work_date(event_time, schedule.DayCutoff)
 
-        # 4. 建立 ScanEvent
+        # 5. 建立 ScanEvent
         scan_event = ScanEvent(
             RFID_ID=request.rfid_id,
             Device_ID=request.device_id,
@@ -68,7 +72,7 @@ class ScanService:
         )
         await self.scan_event_repo.create(scan_event)
 
-        # 5. Upsert AttendanceDaily
+        # 6. Upsert AttendanceDaily
         attendance = await self.attendance_repo.get_by_employee_and_date(
             request.rfid_id, work_date
         )
@@ -84,7 +88,7 @@ class ScanService:
             attendance = AttendanceDaily(
                 RFID_ID=request.rfid_id,
                 WorkDate=work_date,
-                RequiredConfigGUID=required_config.GUID if required_config else None,
+                RequiredConfigGUID=(required_config.GUID if required_config else None),
                 FirstInTime=event_time,
                 CheckInStatus=self._calculate_check_in_status(
                     event_time.time(),

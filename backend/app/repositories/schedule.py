@@ -62,6 +62,18 @@ class ScheduleRepository(BaseRepository[Schedule]):
         # 找全年班表 (ActiveDay = 8)
         return await self.get_by_department_and_day(dept_guid, 8)
 
+    async def get_by_flex_setting(self, flex_setting_guid: str) -> list[Schedule]:
+        """取得引用指定彈性設定的有效班表。"""
+        result = await self.db.execute(
+            select(Schedule).where(
+                and_(
+                    Schedule.FlexSetting_GUID == flex_setting_guid,
+                    Schedule.IsDeleted == False,  # noqa: E712
+                )
+            )
+        )
+        return list(result.scalars().all())
+
     async def soft_delete(self, schedule: Schedule, deleted_by: str) -> Schedule:
         """軟刪除班表。"""
         from datetime import datetime

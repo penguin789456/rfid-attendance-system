@@ -2,13 +2,13 @@
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.attendance import AttendanceDaily
-from app.repositories.attendance import AttendanceRepository
 from app.schemas.attendance import AttendanceDailyResponse, AttendanceDailyUpdate
+from app.services.attendance import AttendanceService
 
 router = APIRouter(prefix="/api/attendance-daily", tags=["attendance"])
 
@@ -22,25 +22,10 @@ async def get_attendance_records(
     db: AsyncSession = Depends(get_db),
 ) -> list[AttendanceDaily]:
     """取得考勤記錄列表。"""
-    repo = AttendanceRepository(db)
-
-    if work_date and rfid_id:
-        # 取得特定員工特定日期的記錄
-        record = await repo.get_by_employee_and_date(rfid_id, work_date)
-        return [record] if record else []
-    elif work_date:
-        # 取得特定日期所有記錄
-        return await repo.get_by_date(work_date)
-    elif rfid_id:
-        # 取得特定員工所有記錄
-        from datetime import timedelta
-
-        today = date.today()
-        start_date = today - timedelta(days=30)  # 預設最近 30 天
-        return await repo.get_by_employee_date_range(rfid_id, start_date, today)
-
-    # 取得所有記錄
-    return await repo.get_all(skip=skip, limit=limit)
+    service = AttendanceService(db)
+    return await service.get_all(
+        skip=skip, limit=limit, work_date=work_date, rfid_id=rfid_id
+    )
 
 
 @router.get("/{guid}", response_model=AttendanceDailyResponse)
@@ -49,11 +34,8 @@ async def get_attendance_record(
     db: AsyncSession = Depends(get_db),
 ) -> AttendanceDaily:
     """取得單一考勤記錄。"""
-    repo = AttendanceRepository(db)
-    record = await repo.get_by_id(guid)
-    if not record:
-        raise HTTPException(status_code=404, detail="考勤記錄不存在")
-    return record
+    service = AttendanceService(db)
+    return await service.get_by_id(guid)
 
 
 @router.put("/{guid}", response_model=AttendanceDailyResponse)
@@ -63,16 +45,8 @@ async def update_attendance_record(
     db: AsyncSession = Depends(get_db),
 ) -> AttendanceDaily:
     """更新考勤記錄。"""
-    repo = AttendanceRepository(db)
-    record = await repo.get_by_id(guid)
-    if not record:
-        raise HTTPException(status_code=404, detail="考勤記錄不存在")
-
-    update_data = data.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(record, key, value)
-
-    return await repo.update(record)
+    service = AttendanceService(db)
+    return await service.update_attendance(guid, data)
 
 
 @router.delete("/{guid}", status_code=status.HTTP_204_NO_CONTENT)
@@ -81,10 +55,6 @@ async def delete_attendance_record(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """刪除考勤記錄。"""
-    repo = AttendanceRepository(db)
-    record = await repo.get_by_id(guid)
-    if not record:
-        raise HTTPException(status_code=404, detail="考勤記錄不存在")
-
-    await repo.delete(record)
+    service = AttendanceService(db)
+    await service.delete_attendance(guid)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -26,12 +26,12 @@ class FlexSettingRepository(BaseRepository[FlexSetting]):
         )
         return list(result.scalars().all())
 
-    async def get_by_department(self, dept_guid: str) -> FlexSetting | None:
-        """根據部門取得彈性設定。"""
+    async def get_by_id_active(self, guid: str) -> FlexSetting | None:
+        """根據 GUID 取得未刪除的彈性設定。"""
         result = await self.db.execute(
             select(FlexSetting).where(
                 and_(
-                    FlexSetting.Dept_GUID == dept_guid,
+                    FlexSetting.GUID == guid,
                     FlexSetting.IsDeleted == False,  # noqa: E712
                 )
             )

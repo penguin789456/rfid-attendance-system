@@ -1,16 +1,16 @@
 """部門 API 路由。"""
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.department import Department
-from app.repositories.department import DepartmentRepository
 from app.schemas.department import (
     DepartmentCreate,
     DepartmentResponse,
     DepartmentUpdate,
 )
+from app.services.department import DepartmentService
 
 router = APIRouter(prefix="/api/departments", tags=["departments"])
 
@@ -22,9 +22,8 @@ async def get_departments(
     db: AsyncSession = Depends(get_db),
 ) -> list[Department]:
     """取得部門列表。"""
-    repo = DepartmentRepository(db)
-    departments = await repo.get_all(skip=skip, limit=limit)
-    return departments
+    service = DepartmentService(db)
+    return await service.get_all(skip=skip, limit=limit)
 
 
 @router.get("/{guid}", response_model=DepartmentResponse)
@@ -33,11 +32,8 @@ async def get_department(
     db: AsyncSession = Depends(get_db),
 ) -> Department:
     """取得單一部門。"""
-    repo = DepartmentRepository(db)
-    department = await repo.get_by_id(guid)
-    if not department:
-        raise HTTPException(status_code=404, detail="部門不存在")
-    return department
+    service = DepartmentService(db)
+    return await service.get_by_id(guid)
 
 
 @router.post("", response_model=DepartmentResponse, status_code=status.HTTP_201_CREATED)
@@ -46,15 +42,8 @@ async def create_department(
     db: AsyncSession = Depends(get_db),
 ) -> Department:
     """新增部門。"""
-    repo = DepartmentRepository(db)
-
-    # 檢查部門代碼是否重複
-    existing = await repo.get_by_code(data.DeptCode)
-    if existing:
-        raise HTTPException(status_code=409, detail="部門代碼已存在")
-
-    department = Department(**data.model_dump())
-    return await repo.create(department)
+    service = DepartmentService(db)
+    return await service.create_department(data)
 
 
 @router.put("/{guid}", response_model=DepartmentResponse)
@@ -64,16 +53,8 @@ async def update_department(
     db: AsyncSession = Depends(get_db),
 ) -> Department:
     """更新部門。"""
-    repo = DepartmentRepository(db)
-    department = await repo.get_by_id(guid)
-    if not department:
-        raise HTTPException(status_code=404, detail="部門不存在")
-
-    update_data = data.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(department, key, value)
-
-    return await repo.update(department)
+    service = DepartmentService(db)
+    return await service.update_department(guid, data)
 
 
 @router.delete("/{guid}", status_code=status.HTTP_204_NO_CONTENT)
@@ -82,10 +63,6 @@ async def delete_department(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """刪除部門。"""
-    repo = DepartmentRepository(db)
-    department = await repo.get_by_id(guid)
-    if not department:
-        raise HTTPException(status_code=404, detail="部門不存在")
-
-    await repo.delete(department)
+    service = DepartmentService(db)
+    await service.delete_department(guid)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

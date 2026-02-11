@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, text
+from sqlalchemy import Boolean, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -13,20 +13,9 @@ class FlexSetting(Base):
     """彈性設定資料表（軟刪除）。"""
 
     __tablename__ = "FlexSettings"
-    __table_args__ = (
-        Index(
-            "uix_dept_active",  # 索引名稱
-            "Dept_GUID",  # 欄位 (對應你 Schema 中的命名)
-            unique=True,  # 強制唯一限制
-            sqlite_where=text("IsDeleted = 0"),  # 關鍵：排除已軟刪除的資料
-        ),
-    )
 
     GUID: Mapped[str] = mapped_column(
         String, primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    Dept_GUID: Mapped[str] = mapped_column(
-        String, ForeignKey("Departments.GUID"), nullable=False
     )
     FlexMinutes: Mapped[int] = mapped_column(Integer, nullable=False)
     IsDeleted: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -38,5 +27,5 @@ class FlexSetting(Base):
     )
 
     # Relationships
-    department = relationship("Department", back_populates="flex_settings")
+    schedules = relationship("Schedule", back_populates="flex_setting")
     required_configs = relationship("RequiredConfig", back_populates="flex_setting")

@@ -47,6 +47,12 @@ class ScheduleService:
         if not department:
             raise HTTPException(status_code=400, detail="部門不存在")
 
+        # 檢查 FlexSetting 是否存在（若有指定）
+        if data.FlexSetting_GUID:
+            flex = await self.flex_setting_repo.get_by_id_active(data.FlexSetting_GUID)
+            if not flex:
+                raise HTTPException(status_code=400, detail="彈性設定不存在或已刪除")
+
         # 檢查是否已有相同部門和日期的班表
         existing = await self.schedule_repo.get_by_department_and_day(
             data.Dept_GUID, data.ActiveDay
@@ -68,7 +74,7 @@ class ScheduleService:
         schedule = await self.schedule_repo.create(schedule)
 
         # 發布 RequiredConfig 快照
-        await self._publish_required_config(schedule, data.Dept_GUID)
+        await self._publish_required_config(schedule)
 
         return schedule
 
@@ -82,6 +88,14 @@ class ScheduleService:
             raise HTTPException(status_code=400, detail="無法更新已刪除的班表")
 
         update_data = data.model_dump(exclude_unset=True)
+
+        # 檢查 FlexSetting 是否存在（若有更新）
+        if "FlexSetting_GUID" in update_data and update_data["FlexSetting_GUID"]:
+            flex = await self.flex_setting_repo.get_by_id_active(
+                update_data["FlexSetting_GUID"]
+            )
+            if not flex:
+                raise HTTPException(status_code=400, detail="彈性設定不存在或已刪除")
 
         # 如果更新 ActiveDay，檢查是否衝突
         if "ActiveDay" in update_data:
@@ -110,7 +124,7 @@ class ScheduleService:
         schedule = await self.schedule_repo.update(schedule)
 
         # 重新發布 RequiredConfig 快照
-        await self._publish_required_config(schedule, schedule.Dept_GUID)
+        await self._publish_required_config(schedule)
 
         return schedule
 
@@ -137,39 +151,41 @@ class ScheduleService:
     ) -> None:
         """檢查 ActiveDay=8 與 1-7 的衝突。"""
         if active_day == 8:
-            # 若要設定全年班表，檢查是否已有特定日期班表
             if any(s.ActiveDay != 8 for s in dept_schedules):
                 raise HTTPException(
                     status_code=409,
                     detail="該部門已有特定日期班表設定，無法新增全年班表",
                 )
         else:
-            # 若要設定特定日期班表，檢查是否已有全年班表
             if any(s.ActiveDay == 8 for s in dept_schedules):
                 raise HTTPException(
                     status_code=409,
                     detail="該部門已有全年班表設定，無法新增特定日期班表",
                 )
 
-    async def _publish_required_config(
-        self, schedule: Schedule, dept_guid: str
-    ) -> None:
+    async def _publish_required_config(self, schedule: Schedule) -> None:
         """建立 RequiredConfig 快照，並過期舊版本。"""
-        # 取得該部門的 FlexSetting
-        flex_setting = await self.flex_setting_repo.get_by_department(dept_guid)
-        flex_minutes = flex_setting.FlexMinutes if flex_setting else 0
-        flex_guid = flex_setting.GUID if flex_setting else None
+        # 從 Schedule 的 FlexSetting_GUID 取得彈性設定
+        flex_minutes = 0
+        flex_guid = None
+        if schedule.FlexSetting_GUID:
+            flex_setting = await self.flex_setting_repo.get_by_id_active(
+                schedule.FlexSetting_GUID
+            )
+            if flex_setting:
+                flex_minutes = flex_setting.FlexMinutes
+                flex_guid = flex_setting.GUID
 
         # 過期舊的同部門同 ActiveDay 的 RequiredConfig
         old_config = await self.required_config_repo.get_effective_config(
-            dept_guid, schedule.ActiveDay, date.today()
+            schedule.Dept_GUID, schedule.ActiveDay, date.today()
         )
         if old_config:
             await self.required_config_repo.expire_config(old_config, date.today())
 
         # 建立新的 RequiredConfig 快照
         new_config = RequiredConfig(
-            Dept_GUID=dept_guid,
+            Dept_GUID=schedule.Dept_GUID,
             Schedule_GUID=schedule.GUID,
             FlexSetting_GUID=flex_guid,
             ActiveDay=schedule.ActiveDay,

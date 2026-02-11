@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.flex_setting import FlexSetting
 from app.models.required_config import RequiredConfig
-from app.repositories.department import DepartmentRepository
 from app.repositories.flex_setting import FlexSettingRepository
 from app.repositories.required_config import RequiredConfigRepository
 from app.repositories.schedule import ScheduleRepository
@@ -21,7 +20,6 @@ class FlexSettingService:
         """初始化服務。"""
         self.db = db
         self.flex_setting_repo = FlexSettingRepository(db)
-        self.dept_repo = DepartmentRepository(db)
         self.schedule_repo = ScheduleRepository(db)
         self.required_config_repo = RequiredConfigRepository(db)
 
@@ -41,33 +39,15 @@ class FlexSettingService:
         return flex_setting
 
     async def create_flex_setting(self, data: FlexSettingCreate) -> FlexSetting:
-        """新增彈性設定並為該部門所有班表發布 RequiredConfig。"""
-        # 檢查部門是否存在
-        department = await self.dept_repo.get_by_id(data.Dept_GUID)
-        if not department:
-            raise HTTPException(status_code=400, detail="部門不存在")
-
-        # 檢查該部門是否已有彈性設定
-        existing = await self.flex_setting_repo.get_by_department(data.Dept_GUID)
-        if existing:
-            raise HTTPException(
-                status_code=409,
-                detail="該部門已有彈性設定",
-            )
-
-        # 建立彈性設定
+        """新增彈性設定。"""
         flex_setting = FlexSetting(**data.model_dump())
         flex_setting = await self.flex_setting_repo.create(flex_setting)
-
-        # 為該部門所有有效班表重新發布 RequiredConfig
-        await self._republish_all_configs(data.Dept_GUID, flex_setting)
-
         return flex_setting
 
     async def update_flex_setting(
         self, guid: str, data: FlexSettingUpdate
     ) -> FlexSetting:
-        """更新彈性設定並重新發布 RequiredConfig。"""
+        """更新彈性設定並重新發布引用此設定的 RequiredConfig。"""
         flex_setting = await self.flex_setting_repo.get_by_id(guid)
         if not flex_setting:
             raise HTTPException(status_code=404, detail="彈性設定不存在")
@@ -81,8 +61,8 @@ class FlexSettingService:
 
         flex_setting = await self.flex_setting_repo.update(flex_setting)
 
-        # 為該部門所有有效班表重新發布 RequiredConfig
-        await self._republish_all_configs(flex_setting.Dept_GUID, flex_setting)
+        # 重新發布引用此 FlexSetting 的所有有效班表的 RequiredConfig
+        await self._republish_all_configs(flex_setting)
 
         return flex_setting
 
@@ -95,22 +75,19 @@ class FlexSettingService:
         if flex_setting.IsDeleted:
             raise HTTPException(status_code=400, detail="彈性設定已被刪除")
 
-        # 為該部門所有有效班表重新發布 RequiredConfig（FlexMinutes 歸零）
-        dept_schedules = await self.schedule_repo.get_by_department(
-            flex_setting.Dept_GUID
-        )
-        for schedule in dept_schedules:
+        # 找出引用此 FlexSetting 的所有有效班表
+        # 重新發布 RequiredConfig（FlexMinutes=0）
+        schedules = await self.schedule_repo.get_by_flex_setting(guid)
+        for schedule in schedules:
             old_config = await self.required_config_repo.get_effective_config(
-                flex_setting.Dept_GUID, schedule.ActiveDay, date.today()
+                schedule.Dept_GUID, schedule.ActiveDay, date.today()
             )
             if old_config:
-                await self.required_config_repo.expire_config(
-                    old_config, date.today()
-                )
+                await self.required_config_repo.expire_config(old_config, date.today())
 
             # 建立新的 RequiredConfig（FlexMinutes=0）
             new_config = RequiredConfig(
-                Dept_GUID=flex_setting.Dept_GUID,
+                Dept_GUID=schedule.Dept_GUID,
                 Schedule_GUID=schedule.GUID,
                 FlexSetting_GUID=None,
                 ActiveDay=schedule.ActiveDay,
@@ -122,27 +99,27 @@ class FlexSettingService:
             )
             await self.required_config_repo.create(new_config)
 
+            # 清除班表上的 FlexSetting_GUID 參照
+            schedule.FlexSetting_GUID = None
+            await self.schedule_repo.update(schedule)
+
         await self.flex_setting_repo.soft_delete(flex_setting, deleted_by)
 
-    async def _republish_all_configs(
-        self, dept_guid: str, flex_setting: FlexSetting
-    ) -> None:
-        """為該部門所有有效班表重新發布 RequiredConfig。"""
-        dept_schedules = await self.schedule_repo.get_by_department(dept_guid)
+    async def _republish_all_configs(self, flex_setting: FlexSetting) -> None:
+        """為引用此 FlexSetting 的所有有效班表重新發布 RequiredConfig。"""
+        schedules = await self.schedule_repo.get_by_flex_setting(flex_setting.GUID)
 
-        for schedule in dept_schedules:
+        for schedule in schedules:
             # 過期舊的 RequiredConfig
             old_config = await self.required_config_repo.get_effective_config(
-                dept_guid, schedule.ActiveDay, date.today()
+                schedule.Dept_GUID, schedule.ActiveDay, date.today()
             )
             if old_config:
-                await self.required_config_repo.expire_config(
-                    old_config, date.today()
-                )
+                await self.required_config_repo.expire_config(old_config, date.today())
 
             # 建立新的 RequiredConfig 快照
             new_config = RequiredConfig(
-                Dept_GUID=dept_guid,
+                Dept_GUID=schedule.Dept_GUID,
                 Schedule_GUID=schedule.GUID,
                 FlexSetting_GUID=flex_setting.GUID,
                 ActiveDay=schedule.ActiveDay,

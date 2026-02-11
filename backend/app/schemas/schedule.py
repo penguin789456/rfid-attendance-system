@@ -14,6 +14,7 @@ class ScheduleBase(BaseModel):
     CheckInNeedBefore: time
     CheckNeedOutAfter: time
     DayCutoff: time
+    FlexSetting_GUID: str | None = None
 
     @field_validator("ActiveDay")
     @classmethod
@@ -38,6 +39,7 @@ class ScheduleUpdate(BaseModel):
     CheckInNeedBefore: time | None = None
     CheckNeedOutAfter: time | None = None
     DayCutoff: time | None = None
+    FlexSetting_GUID: str | None = None
 
     @field_validator("ActiveDay")
     @classmethod

@@ -23,8 +23,8 @@ class RequiredConfig(Base):
     Schedule_GUID: Mapped[str] = mapped_column(
         String, ForeignKey("Schedules.GUID"), nullable=False
     )
-    FlexSetting_GUID: Mapped[str] = mapped_column(
-        String, ForeignKey("FlexSettings.GUID"), nullable=False
+    FlexSetting_GUID: Mapped[str | None] = mapped_column(
+        String, ForeignKey("FlexSettings.GUID"), nullable=True
     )
     ActiveDay: Mapped[int] = mapped_column(Integer, nullable=False)
     RequiredIn: Mapped[time] = mapped_column(Time, nullable=False)

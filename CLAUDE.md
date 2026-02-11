@@ -12,8 +12,9 @@
 - RFID 卡刷卡是上下班打卡的唯一方法
 - 所有出勤事件都源自 `ScanEvents` 表
 
-### 2. 部門級別規則管理
-- 每個部門都有自己的班表（`Schedules` 表）和彈性設定（`FlexSettings` 表）
+### 2. 班表級別規則管理
+- 每個部門都有自己的班表（`Schedules` 表）
+- 彈性設定（`FlexSettings` 表）為獨立實體，透過 `Schedules.FlexSetting_GUID` 關聯至班表
 - 規則透過 `RequiredConfigs` 表進行版本控制（不可變快照）
 
 ### 3. 規則鎖定邏輯（關鍵）
@@ -32,8 +33,7 @@
 Departments（部門）
  ├─ Employees（員工）
  │   ├─ ScanEvents（原始 RFID 刷卡事件）
- │   └─ AttendanceDaily ── RequiredConfigs ── Schedules
- │                                      └─ FlexSettings
+ │   └─ AttendanceDaily ── RequiredConfigs ── Schedules ── FlexSettings
 ```
 
 ### 主要資料表
@@ -42,10 +42,11 @@ Departments（部門）
 - 啟用軟刪除
 - `ActiveDay`：1-7（週一至週日），8=全年
 - `DayCutoff`：日期分界時間（例如 04:00）
+- `FlexSetting_GUID`：可選關聯至彈性設定
 
-**FlexSettings（彈性設定）**（`Dept_GUID` 在 `IsDeleted=0` 時唯一）
+**FlexSettings（彈性設定）**（獨立實體，軟刪除）
 - 啟用軟刪除
-- 部門級別的彈性時間（分鐘）
+- 彈性時間（分鐘），透過 `Schedules.FlexSetting_GUID` 被班表引用
 
 **RequiredConfigs（規則配置快照）**（不可變）
 - 當 HR 發布 Schedules 或 FlexSettings 時建立
@@ -73,7 +74,7 @@ Departments（部門）
 
 1. 從 RFID 讀卡機接收 `rfid_id`
 2. 透過 `Employees` 表驗證員工並取得 `Dept_GUID`
-3. 查詢有效的 `Schedules`（按 `ActiveDay`、`IsDeleted=0`）和 `FlexSettings`（按部門）
+3. 查詢有效的 `Schedules`（按 `ActiveDay`、`IsDeleted=0`），並透過 `Schedule.FlexSetting_GUID` 取得彈性設定
 4. 使用班表中的 `DayCutoff` 來判定 `WorkDate`
 5. 插入到 `ScanEvents`
 6. **Upsert** `AttendanceDaily (RFID_ID, WorkDate)`：
@@ -90,6 +91,11 @@ Departments（部門）
 
 ## 開發指南
 
+### 三層架構（Router → Service → Repository）
+- **Router**：僅處理 HTTP 請求/回應，委派業務邏輯至 Service
+- **Service**：處理業務邏輯、驗證、錯誤處理（HTTPException）
+- **Repository**：處理資料存取（SQLAlchemy 查詢）
+
 ### 實作 API 端點時
 - 始終驗證 `RFID_ID` 存在於 `Employees` 表中且 `Active=1`
 - 更新多個表時使用交易（例如 `ScanEvents` + `AttendanceDaily`）
@@ -103,7 +109,6 @@ Departments（部門）
 
 ### 需強制執行的資料庫約束
 - 唯一約束：`Schedules` 中 `IsDeleted=0` 時的 `(Dept_GUID, ActiveDay)`
-- 唯一約束：`FlexSettings` 中 `IsDeleted=0` 時的 `Dept_GUID`
 - 所有 GUID 參照的外鍵完整性
 
 ## 技術背景
@@ -283,6 +288,7 @@ export const useEmployeeStore = create<EmployeeState>((set) => ({
 |------|------|------|
 | GUID | TEXT (PK) | 班表 ID |
 | Dept_GUID | TEXT (FK) | 部門 |
+| FlexSetting_GUID | TEXT (FK, NULL) | 彈性設定（可選） |
 | Name | TEXT | 班表名稱 |
 | ActiveDay | INTEGER | 1–7（週一至週日），8=全年 |
 | CheckInNeedBefore | TIME | 規定上班時間 |
@@ -294,13 +300,11 @@ export const useEmployeeStore = create<EmployeeState>((set) => ({
 | CreateTime | DATETIME | 建立時間 |
 | UpdateTime | DATETIME | 更新時間 |
 
-#### FlexSettings（彈性設定，軟刪除）
-> 唯一約束：`Dept_GUID` 在 `IsDeleted = 0` 下唯一
+#### FlexSettings（彈性設定，獨立實體，軟刪除）
 
 | 欄位 | 型別 | 說明 |
 |------|------|------|
 | GUID | TEXT (PK) | 彈性設定 ID |
-| Dept_GUID | TEXT (FK) | 部門 |
 | FlexMinutes | INTEGER | 彈性分鐘數 |
 | IsDeleted | BOOLEAN | 軟刪除 |
 | DeletedTime | DATETIME | 刪除時間 |
@@ -314,7 +318,7 @@ export const useEmployeeStore = create<EmployeeState>((set) => ({
 | GUID | TEXT (PK) | 規則版本 ID |
 | Dept_GUID | TEXT (FK) | 部門 |
 | Schedule_GUID | TEXT (FK) | 來源班表 |
-| FlexSetting_GUID | TEXT (FK) | 來源彈性設定 |
+| FlexSetting_GUID | TEXT (FK, NULL) | 來源彈性設定（可選） |
 | ActiveDay | INTEGER | 快照 |
 | RequiredIn | TIME | 上班時間快照 |
 | RequiredOut | TIME | 下班時間快照 |
