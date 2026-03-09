@@ -121,12 +121,16 @@ class ScanService:
 
     def _calculate_work_date(self, event_time: datetime, day_cutoff: time) -> date:
         """根據 DayCutoff 計算工作日期。"""
-        cutoff_datetime = datetime.combine(event_time.date(), day_cutoff).replace(
-            tzinfo=UTC
+        if event_time.tzinfo is None:
+            raise ValueError("event_time 必須是 timezone-aware datetime")
+
+        cutoff_datetime = datetime.combine(
+            event_time.date(),
+            day_cutoff,
+            tzinfo=event_time.tzinfo
         )
 
         if event_time < cutoff_datetime:
-            # 刷卡時間在日切點之前，屬於前一天
             return event_time.date() - timedelta(days=1)
         return event_time.date()
 
